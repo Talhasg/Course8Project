@@ -1,0 +1,68 @@
+---
+title: "Course8Project"
+output: html_document
+---
+
+##Data Reading
+
+```{r}
+rawdata<-read.csv("pml-training.csv", na.strings=c("NA", ""))
+set.seed(33)
+```
+
+##Data Cleaning
+* Using columns sensor information and classe information
+* Only using columns which has more than 19000 values which are not NA
+
+```{r}
+sensorColumns = grep(pattern = "_belt|_arm|_dumbbell|_forearm", names(rawdata))
+cleandata = rawdata[, c(sensorColumns,160)]
+missingData = is.na(cleandata)
+omitColumns = which(colSums(missingData) > 19000)
+cleandata = cleandata[, -omitColumns]
+```
+
+## Data partitioning
+
+Setting 75% of data for training
+
+```{r}
+library(randomForest)
+library(caret)
+library(ggplot2)
+inTrain <- createDataPartition(y=cleandata$classe, p=0.75, list=FALSE)
+training <- cleandata[inTrain,]
+testing <- cleandata[-inTrain,]
+```
+
+## Checking data visually
+
+### Checking count of each classe
+```{r}
+qplot(classe,data=training, col=classe)
+```
+
+### Picking random colums to see if data can be seprated based on 2 features
+```{r}
+qplot(pitch_belt, accel_forearm_y, col=classe, data=training)
+qplot(gyros_belt_y, gyros_arm_y, col=classe, data=training)
+```
+
+Conclusion: Two features are not enough to seperate data. It was obvious!
+
+## Generating model
+Usind randomforest to come up with model
+```{r}
+randForest = randomForest(classe~., data=training, ntree = 500)
+```
+
+## Running prediction
+
+Predicting testing data using randomForest modek and comparing it against classe column using confusion matrix
+
+```{r}
+prediction = predict(randForest, newdata = testing)
+confusionMatrix(prediction, testing$classe)
+```
+
+Accuracy of model on test data is >95%
